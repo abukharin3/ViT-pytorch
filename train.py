@@ -69,7 +69,7 @@ def setup(args):
     logger.info("{}".format(config))
     logger.info("Training parameters %s", args)
     logger.info("Total Parameter: \t%2.1fM" % num_params)
-    print(num_params)
+    print("Params:", num_params)
     return args, model
 
 
@@ -137,6 +137,48 @@ def valid(args, model, writer, test_loader, global_step):
     writer.add_scalar("test/accuracy", scalar_value=accuracy, global_step=global_step)
     return accuracy
 
+def mask(model, is_dict, mask_threshold):
+    '''
+    Create mask from is_dict (sensitivity dict) and threshold
+    '''
+    non_mask_name = ["embedding", "norm"]
+    for n, p in model.named_parameters():
+        if not any([nd in n for nd in non_mask_name]) and p.grad is not None:
+            p.data.masked_fill_(is_dict[n] < mask_threshold, 0.0)
+
+def update_mask_threshold(model, r):
+    '''
+    Find threshold to mask out (1 - r) % of parameters
+    '''
+    non_mask_name = ["embedding", "norm"]
+    is_dict = {}
+    for n, p in model.named_parameters():
+        if not any([nd in n for nd in non_mask_name]):
+            is_dict[n] = model.exp_avg_ipt[n] * (model.ipt[n] - model.exp_avg_ipt[n]).abs()
+
+    all_is = torch.cat([is_dict[n].view(-1) for n in is_dict])
+    mask_threshold = torch.kthvalue(all_is, int((1 - r) * all_is.shape[0]))[0].item()
+    return is_dict, mask_threshold
+
+def schedule_threshold(step: int, total_step:int, args):
+    '''
+    Schedule the threshold, r
+    '''
+    initial_warmup, final_warmup, final_threshold = args.initial_warmup, args.final_warmup, args.final_threshold
+    prune_steps = total_step - (initial_warmup + final_warmup)
+    if step < initial_warmup:
+        threshold = 1.0
+    elif step > (total_step - final_warmup):
+        threshold = final_threshold
+    elif args.prune_schedule == 'cubic':
+        mul_coeff = 1 - (step - initial_warmup) / prune_steps
+        threshold = final_threshold + (1 - final_threshold) * (mul_coeff ** 3)
+    else:
+        raise ValueError("Incorrect prune schedule selected")
+
+    return threshold
+
+
 
 def train(args, model):
     """ Train the model """
@@ -169,6 +211,10 @@ def train(args, model):
     # Distributed training
     if args.local_rank != -1:
         model = DDP(model, message_size=250000000, gradient_predivide_factor=get_world_size())
+
+    # Prepare pruning
+    r = 1.0
+    mask_threshold = None
 
     # Train!
     logger.info("***** Running training *****")
@@ -211,24 +257,37 @@ def train(args, model):
                     torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                 scheduler.step()
                 optimizer.step()
+
+                model.update_exp_avg_ipt()
                 optimizer.zero_grad()
                 global_step += 1
 
                 epoch_iterator.set_description(
-                    "Training (%d / %d Steps) (loss=%2.5f)" % (global_step, t_total, losses.val)
+                    "Training (%d / %d Steps) (loss=%2.5f) (Paramters Remaining=%f" % (global_step, t_total, losses.val, r)
                 )
                 if args.local_rank in [-1, 0]:
                     writer.add_scalar("train/loss", scalar_value=losses.val, global_step=global_step)
                     writer.add_scalar("train/lr", scalar_value=scheduler.get_lr()[0], global_step=global_step)
                 if global_step % args.eval_every == 0 and args.local_rank in [-1, 0]:
                     accuracy = valid(args, model, writer, test_loader, global_step)
-                    if best_acc < accuracy:
+                    if best_acc < accuracy and r <= args.final_threshold:
                         save_model(args, model)
                         best_acc = accuracy
                     model.train()
 
                 if global_step % t_total == 0:
                     break
+
+            # Prune with uncertainty
+            if global_step > args.initial_warmup:
+                r = schedule_threshold(global_step, t_total, args)
+                is_dict, mask_threshold = update_mask_threshold(model, r)
+
+            if mask_threshold is not None:
+                mask(model, is_dict, mask_threshold)
+
+
+
         losses.reset()
         if global_step % t_total == 0:
             break
@@ -293,6 +352,14 @@ def main():
                         help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
+    parser.add_argument('--initial_warmup', type=int, default = 5000,
+                        help="Fine tuning before pruning")
+    parser.add_argument('--final_warmup', type=int, default = 5000,
+                        help="Fine tuning after pruning")
+    parser.add_argument('--final_threshold', type=int, default = 0.9,
+                        help="Final proportion of parameters left")
+    parser.add_argument('--prune_schedule', type=str, default = 'cubic',
+                        help="How to schedule pruning threshold")
     args = parser.parse_args()
 
     # Setup CUDA, GPU & distributed training
@@ -319,7 +386,7 @@ def main():
 
     # Model & Tokenizer Setup
     args, model = setup(args)
-
+    
     # Training
     train(args, model)
 

@@ -269,6 +269,9 @@ class VisionTransformer(nn.Module):
         self.transformer = Transformer(config, img_size, vis)
         self.head = Linear(config.hidden_size, num_classes)
 
+        self.exp_avg_ipt = {}
+        self.ipt = {}
+
     def forward(self, x, labels=None):
         x, attn_weights = self.transformer(x)
         logits = self.head(x[:, 0])
@@ -334,6 +337,19 @@ class VisionTransformer(nn.Module):
                 for bname, block in self.transformer.embeddings.hybrid_model.body.named_children():
                     for uname, unit in block.named_children():
                         unit.load_from(weights, n_block=bname, n_unit=uname)
+
+    def update_exp_avg_ipt(self):
+        '''
+        Update exponential average of sensitivity
+        '''
+        BETA3 = 0.85
+        non_mask_name = ["embedding", "norm"]
+        for n, p in self.named_parameters():
+            if not any([nd in n for nd in non_mask_name]):
+                if n not in self.exp_avg_ipt:
+                    self.exp_avg_ipt[n] = torch.zeros_like(p)
+                self.ipt[n] = (p * p.grad).abs().detach()
+                self.exp_avg_ipt[n] = BETA3 * self.exp_avg_ipt[n] + (1 - BETA3) * self.ipt[n]
 
 
 CONFIGS = {
