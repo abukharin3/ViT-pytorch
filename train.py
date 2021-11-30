@@ -179,7 +179,6 @@ def schedule_threshold(step: int, total_step:int, args):
     return threshold
 
 
-
 def train(args, model):
     """ Train the model """
     if args.local_rank in [-1, 0]:
@@ -259,6 +258,7 @@ def train(args, model):
                 optimizer.step()
 
                 model.update_exp_avg_ipt()
+
                 optimizer.zero_grad()
                 global_step += 1
 
@@ -269,7 +269,6 @@ def train(args, model):
                     writer.add_scalar("train/loss", scalar_value=losses.val, global_step=global_step)
                     writer.add_scalar("train/lr", scalar_value=scheduler.get_lr()[0], global_step=global_step)
                 if global_step % args.eval_every == 0 and args.local_rank in [-1, 0]:
-                    accuracy = valid(args, model, writer, test_loader, global_step)
                     if best_acc < accuracy and r <= args.final_threshold:
                         save_model(args, model)
                         best_acc = accuracy
@@ -285,8 +284,6 @@ def train(args, model):
 
             if mask_threshold is not None:
                 mask(model, is_dict, mask_threshold)
-
-
 
         losses.reset()
         if global_step % t_total == 0:
@@ -386,7 +383,7 @@ def main():
 
     # Model & Tokenizer Setup
     args, model = setup(args)
-    
+
     # Training
     train(args, model)
 
