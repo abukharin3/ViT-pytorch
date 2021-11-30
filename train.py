@@ -354,7 +354,7 @@ def main():
                         help="Fine tuning before pruning")
     parser.add_argument('--final_warmup', type=int, default = 5000,
                         help="Fine tuning after pruning")
-    parser.add_argument('--final_threshold', type=int, default = 0.9,
+    parser.add_argument('--final_threshold', type=int, default = 0.5,
                         help="Final proportion of parameters left")
     parser.add_argument('--prune_schedule', type=str, default = 'cubic',
                         help="How to schedule pruning threshold")
