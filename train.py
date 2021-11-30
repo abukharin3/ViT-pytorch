@@ -269,6 +269,7 @@ def train(args, model):
                     writer.add_scalar("train/loss", scalar_value=losses.val, global_step=global_step)
                     writer.add_scalar("train/lr", scalar_value=scheduler.get_lr()[0], global_step=global_step)
                 if global_step % args.eval_every == 0 and args.local_rank in [-1, 0]:
+                    accuracy = valid(args, model, writer, test_loader, global_step)
                     if best_acc < accuracy and r <= args.final_threshold:
                         save_model(args, model)
                         best_acc = accuracy
