@@ -157,6 +157,7 @@ def update_mask_threshold(model, r):
             is_dict[n] = model.exp_avg_ipt[n] * (model.ipt[n] - model.exp_avg_ipt[n]).abs()
 
     all_is = torch.cat([is_dict[n].view(-1) for n in is_dict])
+    print(all_is.shape, r, int((1 - r) * all_is.shape[0]))
     mask_threshold = torch.kthvalue(all_is, int((1 - r) * all_is.shape[0]))[0].item()
     return is_dict, mask_threshold
 
@@ -358,7 +359,7 @@ def main():
                         help="Final proportion of parameters left")
     parser.add_argument('--prune_schedule', type=str, default = 'cubic',
                         help="How to schedule pruning threshold")
-    parser.add_argument('--prune', type=bool, default = False,
+    parser.add_argument('--prune', type=bool, default = True,
                         help="Whether to prune or not")
     args = parser.parse_args()
 
