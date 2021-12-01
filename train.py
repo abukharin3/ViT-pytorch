@@ -157,7 +157,7 @@ def update_mask_threshold(model, r):
             is_dict[n] = model.exp_avg_ipt[n] * (model.ipt[n] - model.exp_avg_ipt[n]).abs()
 
     all_is = torch.cat([is_dict[n].view(-1) for n in is_dict])
-    mask_threshold = torch.kthvalue(all_is, int((1 - r) * all_is.shape[0]))[0].item()
+    mask_threshold = torch.kthvalue(all_is, max(0, int((1 - r) * all_is.shape[0])))[0].item()
     return is_dict, mask_threshold
 
 def schedule_threshold(step: int, total_step:int, args):
