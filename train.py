@@ -157,7 +157,7 @@ def update_mask_threshold(model, r):
             is_dict[n] = model.exp_avg_ipt[n] * (model.ipt[n] - model.exp_avg_ipt[n]).abs()
 
     all_is = torch.cat([is_dict[n].view(-1) for n in is_dict])
-    mask_threshold = torch.kthvalue(all_is, int((1 - r) * (all_is.shape[0] - 1)))[0].item()
+    mask_threshold = torch.kthvalue(all_is, int((1 - r) * all_is.shape[0]))[0].item()
     return is_dict, mask_threshold
 
 def schedule_threshold(step: int, total_step:int, args):
@@ -279,7 +279,7 @@ def train(args, model):
                     break
 
             # Prune with uncertainty
-            if global_step > args.initial_warmup:
+            if global_step > args.initial_warmup and args.prune:
                 r = schedule_threshold(global_step, t_total, args)
                 is_dict, mask_threshold = update_mask_threshold(model, r)
 
@@ -358,6 +358,8 @@ def main():
                         help="Final proportion of parameters left")
     parser.add_argument('--prune_schedule', type=str, default = 'cubic',
                         help="How to schedule pruning threshold")
+    parser.add_argument('--prune', type=bool, default = False,
+                        help="Whether to prune or not")
     args = parser.parse_args()
 
     # Setup CUDA, GPU & distributed training
