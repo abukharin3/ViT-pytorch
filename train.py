@@ -61,7 +61,7 @@ def setup(args):
 
     num_classes = 10 if args.dataset == "cifar10" else 100
 
-    model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes)
+    model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes, move_prune=args.move_prune)
     model.load_from(np.load(args.pretrained_dir))
     model.to(args.device)
     num_params = count_parameters(model)
@@ -157,7 +157,24 @@ def update_mask_threshold(model, r):
             is_dict[n] = model.exp_avg_ipt[n] * (model.ipt[n] - model.exp_avg_ipt[n]).abs()
 
     all_is = torch.cat([is_dict[n].view(-1) for n in is_dict])
-    print(all_is.shape, r, int((1 - r) * all_is.shape[0]))
+    mask_threshold = torch.kthvalue(all_is, int((1 - r) * all_is.shape[0]))[0].item()
+    return is_dict, mask_threshold
+
+def update_mask_threshold_movement(model, r, is_dict):
+    '''
+    Find threshold to mask out (1 - r) % of parameters
+    '''
+    non_mask_name = ["embedding", "norm"]
+    if is_dict is None:
+        for n, p in model.named_parameters():
+            if not any([nd in n for nd in non_mask_name]):
+                is_dict[n] = 0
+
+    for n, p in model.named_parameters():
+        if not any([nd in n for nd in non_mask_name]):
+            is_dict[n] += model.ipt[n]
+
+    all_is = torch.cat([is_dict[n].view(-1) for n in is_dict])
     mask_threshold = torch.kthvalue(all_is, int((1 - r) * all_is.shape[0]))[0].item()
     return is_dict, mask_threshold
 
@@ -215,6 +232,7 @@ def train(args, model):
     # Prepare pruning
     r = 1.0
     mask_threshold = None
+    is_dict = None
 
     # Train!
     logger.info("***** Running training *****")
@@ -281,8 +299,12 @@ def train(args, model):
 
             # Prune with uncertainty
             if global_step > args.initial_warmup and args.prune:
-                r = schedule_threshold(global_step, t_total, args)
-                is_dict, mask_threshold = update_mask_threshold(model, r)
+                if args.move_prune:
+                    r = schedule_threshold(global_step, t_total, args)
+                    is_dict, mask_threshold = update_mask_threshold_movement(model, r, is_dict)
+                else:
+                    r = schedule_threshold(global_step, t_total, args)
+                    is_dict, mask_threshold = update_mask_threshold(model, r)
 
             if mask_threshold is not None:
                 mask(model, is_dict, mask_threshold)
@@ -351,16 +373,18 @@ def main():
                         help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
-    parser.add_argument('--initial_warmup', type=int, default = 5000,
+    parser.add_argument('--initial_warmup', type=int, default = 2000,
                         help="Fine tuning before pruning")
-    parser.add_argument('--final_warmup', type=int, default = 5000,
+    parser.add_argument('--final_warmup', type=int, default = 8000,
                         help="Fine tuning after pruning")
-    parser.add_argument('--final_threshold', type=int, default = 0.5,
+    parser.add_argument('--final_threshold', type=float, default = 0.1,
                         help="Final proportion of parameters left")
     parser.add_argument('--prune_schedule', type=str, default = 'cubic',
                         help="How to schedule pruning threshold")
     parser.add_argument('--prune', type=bool, default = True,
                         help="Whether to prune or not")
+    parser.add_argument('--move_prune', type=bool, default = True,
+                        help="Whether to use movement pruning or not")
     args = parser.parse_args()
 
     # Setup CUDA, GPU & distributed training
