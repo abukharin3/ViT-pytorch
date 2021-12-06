@@ -166,9 +166,10 @@ def update_mask_threshold_movement(model, r, is_dict):
     '''
     non_mask_name = ["embedding", "norm"]
     if is_dict is None:
+        is_dict = {}
         for n, p in model.named_parameters():
             if not any([nd in n for nd in non_mask_name]):
-                is_dict[n] = 0
+                is_dict[n] = torch.zeros_like(p)
 
     for n, p in model.named_parameters():
         if not any([nd in n for nd in non_mask_name]):
