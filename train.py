@@ -281,7 +281,7 @@ def train(args, model):
                 scheduler.step()
                 optimizer.step()
 
-                model.update_exp_avg_ipt()
+                model.module.update_exp_avg_ipt()
 
                 optimizer.zero_grad()
                 global_step += 1
