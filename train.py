@@ -395,9 +395,9 @@ def main():
                         help="Final proportion of parameters left")
     parser.add_argument('--prune_schedule', type=str, default = 'cubic',
                         help="How to schedule pruning threshold")
-    parser.add_argument('--prune', type=bool, action = "store_false",
+    parser.add_argument('--prune', default=True, action = "store_false",
                         help="Whether to prune or not")
-    parser.add_argument('--move_prune', type=bool, action="store_true",
+    parser.add_argument('--move_prune', default=False, action="store_true",
                         help="Whether to use movement pruning or not")
     args = parser.parse_args()
     print("Pruning: {}, Movement_Pruning: {}".format(args.prune, args.move_prune))
