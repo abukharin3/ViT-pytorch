@@ -230,6 +230,8 @@ def train(args, model):
     # Distributed training
     if args.local_rank != -1:
         model = DDP(model, message_size=250000000, gradient_predivide_factor=get_world_size())
+    
+    model = torch.nn.DataParallel(model, device_ids=list(range(torch.cuda.device_count())))
 
     # Prepare pruning
     r = 1.0
@@ -244,6 +246,7 @@ def train(args, model):
                 args.train_batch_size * args.gradient_accumulation_steps * (
                     torch.distributed.get_world_size() if args.local_rank != -1 else 1))
     logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
+    logger.info("  Number of GPUS = %d", args.n_gpu)
 
     model.zero_grad()
     set_seed(args)  # Added here for reproducibility (even between python 2 and 3)
