@@ -155,7 +155,7 @@ def update_mask_threshold(model, r):
     is_dict = {}
     for n, p in model.named_parameters():
         if not any([nd in n for nd in non_mask_name]):
-            is_dict[n] = model.exp_avg_ipt[n] * (model.ipt[n] - model.exp_avg_ipt[n]).abs()
+            is_dict[n] = model.module.exp_avg_ipt[n] * (model.module.ipt[n] - model.module.exp_avg_ipt[n]).abs()
 
     all_is = torch.cat([is_dict[n].view(-1) for n in is_dict])
     mask_threshold = torch.kthvalue(all_is, int((1 - r) * all_is.shape[0]))[0].item()
@@ -174,7 +174,7 @@ def update_mask_threshold_movement(model, r, is_dict):
 
     for n, p in model.named_parameters():
         if not any([nd in n for nd in non_mask_name]):
-            is_dict[n] += model.ipt[n]
+            is_dict[n] += model.module.ipt[n]
 
     all_is = torch.cat([is_dict[n].view(-1) for n in is_dict])
     mask_threshold = torch.kthvalue(all_is, int((1 - r) * all_is.shape[0]))[0].item()
