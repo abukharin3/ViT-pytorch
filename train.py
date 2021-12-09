@@ -343,7 +343,7 @@ def main():
 
     parser.add_argument("--img_size", default=224, type=int,
                         help="Resolution size")
-    parser.add_argument("--train_batch_size", default=100, type=int,
+    parser.add_argument("--train_batch_size", default=512, type=int,
                         help="Total batch size for training.")
     parser.add_argument("--eval_batch_size", default=64, type=int,
                         help="Total batch size for eval.")
@@ -389,7 +389,7 @@ def main():
                         help="How to schedule pruning threshold")
     parser.add_argument('--prune', type=bool, default = True,
                         help="Whether to prune or not")
-    parser.add_argument('--move_prune', type=bool, default = True,
+    parser.add_argument('--move_prune', type=bool, default = False,
                         help="Whether to use movement pruning or not")
     args = parser.parse_args()
 
