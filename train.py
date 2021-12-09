@@ -206,6 +206,10 @@ def train(args, model):
         os.makedirs(args.output_dir, exist_ok=True)
         writer = SummaryWriter(log_dir=os.path.join("logs", args.name))
 
+    savefile_name = os.path.join("logs", "{}_{}_{}_{}_{}.txt".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup))
+    with open(savefile_name, 'w') as f:
+        f.write("Training Starting")
+
     args.train_batch_size = args.train_batch_size // args.gradient_accumulation_steps
 
     # Prepare dataset
@@ -321,6 +325,10 @@ def train(args, model):
 
     if args.local_rank in [-1, 0]:
         writer.close()
+
+    with open(savefile_name, 'a') as f:
+        f.write("Best Accuracy: {}".format(best_acc))
+
     logger.info("Best Accuracy: \t%f" % best_acc)
     logger.info("End Training!")
 
