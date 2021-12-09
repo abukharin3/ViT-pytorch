@@ -143,7 +143,7 @@ def mask(model, is_dict, mask_threshold):
     Create mask from is_dict (sensitivity dict) and threshold
     '''
     non_mask_name = ["embedding", "norm"]
-    for n, p in model.named_parameters():
+    for n, p in model.module.named_parameters():
         if not any([nd in n for nd in non_mask_name]) and p.grad is not None:
             p.data.masked_fill_(is_dict[n] < mask_threshold, 0.0)
 
