@@ -230,8 +230,6 @@ def train(args, model):
     # Distributed training
     if args.local_rank != -1:
         model = DDP(model, message_size=250000000, gradient_predivide_factor=get_world_size())
-    else:
-        model = nn.DataParallel(model)
 
     # Prepare pruning
     r = 1.0
