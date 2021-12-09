@@ -153,7 +153,7 @@ def update_mask_threshold(model, r):
     '''
     non_mask_name = ["embedding", "norm"]
     is_dict = {}
-    for n, p in model.named_parameters():
+    for n, p in model.module.named_parameters():
         if not any([nd in n for nd in non_mask_name]):
             is_dict[n] = model.module.exp_avg_ipt[n] * (model.module.ipt[n] - model.module.exp_avg_ipt[n]).abs()
 
@@ -168,12 +168,12 @@ def update_mask_threshold_movement(model, r, is_dict):
     non_mask_name = ["embedding", "norm"]
     if is_dict is None:
         is_dict = {}
-        for n, p in model.named_parameters():
+        for n, p in model.module.named_parameters():
             if not any([nd in n for nd in non_mask_name]):
                 is_dict[n] = torch.zeros_like(p)
 
     print(model.module.ipt.keys())
-    for n, p in model.named_parameters():
+    for n, p in model.module.named_parameters():
         if not any([nd in n for nd in non_mask_name]):
             is_dict[n] += model.module.ipt[n]
 

@@ -345,7 +345,7 @@ class VisionTransformer(nn.Module):
         '''
         BETA3 = 0.95
         non_mask_name = ["embedding", "norm"]
-        for n, p in self.named_parameters():
+        for n, p in self.module.named_parameters():
             if not any([nd in n for nd in non_mask_name]):
                 if n not in self.exp_avg_ipt:
                     self.exp_avg_ipt[n] = torch.zeros_like(p)
