@@ -343,7 +343,7 @@ class VisionTransformer(nn.Module):
         '''
         Update exponential average of sensitivity
         '''
-        BETA3 = 0.85
+        BETA3 = 0.95
         non_mask_name = ["embedding", "norm"]
         for n, p in self.named_parameters():
             if not any([nd in n for nd in non_mask_name]):
