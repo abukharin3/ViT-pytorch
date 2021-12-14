@@ -353,7 +353,7 @@ class VisionTransformer(nn.Module):
                     self.exp_avg_ipt[n] = torch.zeros_like(p)
                 self.ipt[n] = (p * p.grad).abs().detach()
                 #self.exp_avg_ipt[n] = BETA3 * self.exp_avg_ipt[n] + (1 - BETA3) * self.ipt[n]
-                self.exp_avg_ipt[n] = (self.exp_avg_ipt[n] * (n - 1) + self.ipt[n]) / n
+                self.exp_avg_ipt[n] = (self.exp_avg_ipt[n] * (self.e_n - 1) + self.ipt[n]) / self.e_n
 
         if self.move_prune:
             self.ipt[n] = p * p.grad
