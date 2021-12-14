@@ -272,6 +272,7 @@ class VisionTransformer(nn.Module):
 
         self.exp_avg_ipt = {}
         self.ipt = {}
+        self.e_n = 0
 
     def forward(self, x, labels=None):
         x, attn_weights = self.transformer(x)
@@ -344,13 +345,15 @@ class VisionTransformer(nn.Module):
         Update exponential average of sensitivity
         '''
         BETA3 = 0.95
+        self.e_n += 1
         non_mask_name = ["embedding", "norm"]
         for n, p in self.named_parameters():
             if not any([nd in n for nd in non_mask_name]):
                 if n not in self.exp_avg_ipt:
                     self.exp_avg_ipt[n] = torch.zeros_like(p)
                 self.ipt[n] = (p * p.grad).abs().detach()
-                self.exp_avg_ipt[n] = BETA3 * self.exp_avg_ipt[n] + (1 - BETA3) * self.ipt[n]
+                #self.exp_avg_ipt[n] = BETA3 * self.exp_avg_ipt[n] + (1 - BETA3) * self.ipt[n]
+                self.exp_avg_ipt[n] = (self.exp_avg_ipt[n] * (n - 1) + self.ipt[n]) / n
 
         if self.move_prune:
             self.ipt[n] = p * p.grad
