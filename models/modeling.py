@@ -260,12 +260,13 @@ class Transformer(nn.Module):
 
 
 class VisionTransformer(nn.Module):
-    def __init__(self, config, img_size=224, num_classes=21843, zero_head=False, vis=False, move_prune=False):
+    def __init__(self, config, img_size=224, num_classes=21843, zero_head=False, vis=False, move_prune=False, beta3=0.85):
         super(VisionTransformer, self).__init__()
         self.num_classes = num_classes
         self.zero_head = zero_head
         self.classifier = config.classifier
         self.move_prune = move_prune
+        self.beta3 = beta3
 
         self.transformer = Transformer(config, img_size, vis)
         self.head = Linear(config.hidden_size, num_classes)
@@ -344,7 +345,7 @@ class VisionTransformer(nn.Module):
         '''
         Update exponential average of sensitivity
         '''
-        BETA3 = 0.95
+        BETA3 = self.beta3
         self.e_n += 1
         non_mask_name = ["embedding", "norm"]
         for n, p in self.named_parameters():
@@ -352,8 +353,8 @@ class VisionTransformer(nn.Module):
                 if n not in self.exp_avg_ipt:
                     self.exp_avg_ipt[n] = torch.zeros_like(p)
                 self.ipt[n] = (p * p.grad).abs().detach()
-                #self.exp_avg_ipt[n] = BETA3 * self.exp_avg_ipt[n] + (1 - BETA3) * self.ipt[n]
-                self.exp_avg_ipt[n] = (self.exp_avg_ipt[n] * (self.e_n - 1) + self.ipt[n]) / self.e_n
+                self.exp_avg_ipt[n] = BETA3 * self.exp_avg_ipt[n] + (1 - BETA3) * self.ipt[n]
+                #self.exp_avg_ipt[n] = (self.exp_avg_ipt[n] * (self.e_n - 1) + self.ipt[n]) / self.e_n
 
         if self.move_prune:
             self.ipt[n] = p * p.grad

@@ -62,7 +62,7 @@ def setup(args):
 
     num_classes = 10 if args.dataset == "cifar10" else 100
 
-    model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes, move_prune=args.move_prune)
+    model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes, move_prune=args.move_prune, beta3=args.beta3)
     model.load_from(np.load(args.pretrained_dir))
     model.to(args.device)
     num_params = count_parameters(model)
@@ -206,7 +206,7 @@ def train(args, model):
         os.makedirs(args.output_dir, exist_ok=True)
         writer = SummaryWriter(log_dir=os.path.join("logs", args.name))
 
-    savefile_name = os.path.join("logs", "{}_{}_{}_{}_{}.txt".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup))
+    savefile_name = os.path.join("logs", "{}_{}_{}_{}_{}_{}.txt".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup, args.beta3))
     with open(savefile_name, 'w') as f:
         f.write("Training Starting")
 
@@ -399,6 +399,8 @@ def main():
                         help="Whether to prune or not")
     parser.add_argument('--move_prune', default=False, action="store_true",
                         help="Whether to use movement pruning or not")
+    parser.add_argument('--beta3', type=float, default = 0.85,
+                        help="BETA3 parameter")
     args = parser.parse_args()
     print("Pruning: {}, Movement_Pruning: {}".format(args.prune, args.move_prune))
 
