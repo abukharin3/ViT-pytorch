@@ -260,7 +260,7 @@ class Transformer(nn.Module):
 
 
 class VisionTransformer(nn.Module):
-    def __init__(self, config, img_size=224, num_classes=21843, zero_head=False, vis=False, move_prune=False, beta3=0.85):
+    def __init__(self, config, img_size=224, num_classes=21843, zero_head=False, vis=False, move_prune=False, beta3=0.85, beta4=0):
         super(VisionTransformer, self).__init__()
         self.num_classes = num_classes
         self.zero_head = zero_head
@@ -273,6 +273,7 @@ class VisionTransformer(nn.Module):
 
         self.exp_avg_ipt = {}
         self.ipt = {}
+        self.ma_uncertainty = {}
         self.e_n = 0
 
     def forward(self, x, labels=None):
