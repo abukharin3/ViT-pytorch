@@ -260,7 +260,8 @@ class Transformer(nn.Module):
 
 
 class VisionTransformer(nn.Module):
-    def __init__(self, config, img_size=224, num_classes=21843, zero_head=False, vis=False, move_prune=False, beta3=0.85, beta4=0):
+    def __init__(self, config, img_size=224, num_classes=21843, zero_head=False, vis=False, move_prune=False, beta3=0.85, beta4=0,
+                 local_window=False, deltaT=100):
         super(VisionTransformer, self).__init__()
         self.num_classes = num_classes
         self.zero_head = zero_head
@@ -275,6 +276,9 @@ class VisionTransformer(nn.Module):
         self.ipt = {}
         self.ma_uncertainty = {}
         self.e_n = 0
+
+        self.local_window = local_window
+        self.deltaT = deltaT
 
     def forward(self, x, labels=None):
         x, attn_weights = self.transformer(x)
@@ -353,9 +357,16 @@ class VisionTransformer(nn.Module):
             if not any([nd in n for nd in non_mask_name]):
                 if n not in self.exp_avg_ipt:
                     self.exp_avg_ipt[n] = torch.zeros_like(p)
-                self.ipt[n] = (p * p.grad).abs().detach()
-                self.exp_avg_ipt[n] = BETA3 * self.exp_avg_ipt[n] + (1 - BETA3) * self.ipt[n]
-                #self.exp_avg_ipt[n] = (self.exp_avg_ipt[n] * (self.e_n - 1) + self.ipt[n]) / self.e_n
+                    self.ipt[n] = torch.zeros_like(p)
+
+                if self.local_window:
+                    local_step = self.e_n % self.deltaT
+                    self.ipt[n] = (self.ipt[n] * local_step + (p * p.grad).abs().detach())/(local_step+1)
+                    self.exp_avg_ipt[n] = BETA3 * self.exp_avg_ipt[n] + (1 - BETA3) * self.ipt[n]
+                else:
+                    self.ipt[n] = (p * p.grad).abs().detach()
+                    self.exp_avg_ipt[n] = BETA3 * self.exp_avg_ipt[n] + (1 - BETA3) * self.ipt[n]
+                    #self.exp_avg_ipt[n] = (self.exp_avg_ipt[n] * (self.e_n - 1) + self.ipt[n]) / self.e_n
 
         if self.move_prune:
             self.ipt[n] = p * p.grad
