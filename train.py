@@ -172,7 +172,6 @@ def update_mask_threshold_movement(model, r, is_dict):
             if not any([nd in n for nd in non_mask_name]):
                 is_dict[n] = torch.zeros_like(p)
 
-    print(model.module.ipt.keys())
     for n, p in model.module.named_parameters():
         if not any([nd in n for nd in non_mask_name]):
             is_dict[n] += model.module.ipt[n]
