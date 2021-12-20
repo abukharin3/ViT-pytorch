@@ -261,7 +261,7 @@ class Transformer(nn.Module):
 
 class VisionTransformer(nn.Module):
     def __init__(self, config, img_size=224, num_classes=21843, zero_head=False, vis=False, move_prune=False, beta3=0.85, beta4=0,
-                 local_window=False, deltaT=100, ma_uncertainty=False, beta4=0.85):
+                 local_window=False, deltaT=100, ma_uncertainty=False, ma_beta=0.85):
         super(VisionTransformer, self).__init__()
         self.num_classes = num_classes
         self.zero_head = zero_head
@@ -277,7 +277,7 @@ class VisionTransformer(nn.Module):
         self.ma_uncertainty = ma_uncertainty
         self.uncertainty = {}
         self.e_n = 0
-        self.beta4 = beta4
+        self.ma_beta = ma_beta
 
         self.local_window = local_window
         self.deltaT = deltaT
@@ -353,7 +353,7 @@ class VisionTransformer(nn.Module):
         Update exponential average of sensitivity
         '''
         BETA3 = self.beta3
-        BETA4 = self.beta4
+        MA_BETA = self.ma_beta
         self.e_n += 1
         non_mask_name = ["embedding", "norm"]
         for n, p in self.named_parameters():
@@ -373,7 +373,7 @@ class VisionTransformer(nn.Module):
                     self.exp_avg_ipt[n] = BETA3 * self.exp_avg_ipt[n] + (1 - BETA3) * self.ipt[n]
                 
                 if self.ma_uncertainty:
-                    self.uncertainty[n] = BETA4 * self.uncertainty[n] + (1 - BETA4) * (self.ipt[n] - self.exp_avg_ipt[n]).abs()
+                    self.uncertainty[n] = MA_BETA * self.uncertainty[n] + (1 - MA_BETA) * (self.ipt[n] - self.exp_avg_ipt[n]).abs()
 
         if self.move_prune:
             self.ipt[n] = p * p.grad
