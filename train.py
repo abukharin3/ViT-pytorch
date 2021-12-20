@@ -63,7 +63,7 @@ def setup(args):
     num_classes = 10 if args.dataset == "cifar10" else 100
 
     model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes, move_prune=args.move_prune, beta3=args.beta3,
-                              local_window=args.local_window, deltaT=args.deltaT)
+                              local_window=args.local_window, deltaT=args.deltaT, ma_uncertainty=args.ma_uncertainty, beta4=args.beta4)
     model.load_from(np.load(args.pretrained_dir))
     model.to(args.device)
     num_params = count_parameters(model)
@@ -148,7 +148,7 @@ def mask(model, is_dict, mask_threshold):
         if not any([nd in n for nd in non_mask_name]) and p.grad is not None:
             p.data.masked_fill_(is_dict[n] < mask_threshold, 0.0)
 
-def update_mask_threshold(model, r):
+def update_mask_threshold(model, r, ma_uncertainty=False):
     '''
     Find threshold to mask out (1 - r) % of parameters
     '''
@@ -156,7 +156,10 @@ def update_mask_threshold(model, r):
     is_dict = {}
     for n, p in model.module.named_parameters():
         if not any([nd in n for nd in non_mask_name]):
-            is_dict[n] = model.module.exp_avg_ipt[n] * (model.module.ipt[n] - model.module.exp_avg_ipt[n]).abs()
+            if ma_uncertainty:
+                is_dict[n] = model.module.exp_avg_ipt[n] * model.module.uncertainty[n]
+            else:
+                is_dict[n] = model.module.exp_avg_ipt[n] * (model.module.ipt[n] - model.module.exp_avg_ipt[n]).abs()
 
     all_is = torch.cat([is_dict[n].view(-1) for n in is_dict])
     mask_threshold = torch.kthvalue(all_is, int((1 - r) * all_is.shape[0]))[0].item()
@@ -206,8 +209,8 @@ def train(args, model):
         os.makedirs(args.output_dir, exist_ok=True)
         writer = SummaryWriter(log_dir=os.path.join("logs", args.name))
 
-    savefile_name = os.path.join("logs", "{}_{}_{}_{}_{}_{}_{}_{}.txt".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup, args.beta3,
-                                                                        args.local_window, args.deltaT))
+    savefile_name = os.path.join("logs", "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.txt".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup, args.beta3,
+                                                                        args.local_window, args.deltaT, args.ma_uncertainty, args.beta4))
     with open(savefile_name, 'w') as f:
         f.write("Training Starting")
 
@@ -315,7 +318,7 @@ def train(args, model):
                     is_dict, mask_threshold = update_mask_threshold_movement(model, r, is_dict)
                 else:
                     r = schedule_threshold(global_step, t_total, args)
-                    is_dict, mask_threshold = update_mask_threshold(model, r)
+                    is_dict, mask_threshold = update_mask_threshold(model, r, args.ma_uncertainty)
 
             if mask_threshold is not None:
                 mask(model, is_dict, mask_threshold)
@@ -406,6 +409,10 @@ def main():
                         help="Whether to use local window")
     parser.add_argument('--deltaT', type=int, default = 100,
                         help="Delta T for local window")
+    parser.add_argument('--ma_uncertainty', default=False, action="store_true",
+                        help="Whether to use local window")
+    parser.add_argument('--beta4', type=float, default = 0.85,
+                        help="BETA4 parameter")
     args = parser.parse_args()
     print("Pruning: {}, Movement_Pruning: {}".format(args.prune, args.move_prune))
 
