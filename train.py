@@ -72,6 +72,9 @@ def setup(args):
     logger.info("Training parameters %s", args)
     logger.info("Total Parameter: \t%2.1fM" % num_params)
     print("Params:", num_params)
+
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.device_num  # specify which GPU(s) to be used
     return args, model
 
 
@@ -410,9 +413,11 @@ def main():
     parser.add_argument('--deltaT', type=int, default = 100,
                         help="Delta T for local window")
     parser.add_argument('--ma_uncertainty', default=False, action="store_true",
-                        help="Whether to use local window")
+                        help="Whether to use ma uncertainty")
     parser.add_argument('--ma_beta', type=float, default = 0.85,
                         help="MA_BETA parameter")
+    parser.add_argument('--device_num', type=str, default = "0",
+                        help="Which device to use (0-7)")
     args = parser.parse_args()
     print("Pruning: {}, Movement_Pruning: {}".format(args.prune, args.move_prune))
 
