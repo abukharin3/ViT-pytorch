@@ -72,9 +72,6 @@ def setup(args):
     logger.info("Training parameters %s", args)
     logger.info("Total Parameter: \t%2.1fM" % num_params)
     print("Params:", num_params)
-
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.device_num  # specify which GPU(s) to be used
     return args, model
 
 
@@ -420,6 +417,9 @@ def main():
                         help="Which device to use (0-7)")
     args = parser.parse_args()
     print("Pruning: {}, Movement_Pruning: {}".format(args.prune, args.move_prune))
+
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.device_num  # specify which GPU(s) to be used
 
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1:
