@@ -413,7 +413,7 @@ def main():
                         help="Whether to use ma uncertainty")
     parser.add_argument('--ma_beta', type=float, default = 0.85,
                         help="MA_BETA parameter")
-    parser.add_argument('--device_num', type=str, default = "0",
+    parser.add_argument('--device_num', type=str, default = "0,1",
                         help="Which device to use (0-7)")
     args = parser.parse_args()
     print("Pruning: {}, Movement_Pruning: {}".format(args.prune, args.move_prune))
