@@ -211,6 +211,9 @@ def train(args, model):
 
     savefile_name = os.path.join("logs", "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.txt".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup, args.beta3,
                                                                         args.local_window, args.deltaT, args.ma_uncertainty, args.ma_beta))
+
+    accs = []
+    params_remaining = []
     with open(savefile_name, 'w') as f:
         f.write("Training Starting")
 
@@ -303,6 +306,8 @@ def train(args, model):
                     writer.add_scalar("train/lr", scalar_value=scheduler.get_lr()[0], global_step=global_step)
                 if global_step % args.eval_every == 0 and args.local_rank in [-1, 0]:
                     accuracy = valid(args, model, writer, test_loader, global_step)
+                    accs.append(accuracy)
+                    params_remaining.append(r)
                     if best_acc < accuracy and r <= args.final_threshold:
                         save_model(args, model)
                         best_acc = accuracy
@@ -335,6 +340,17 @@ def train(args, model):
 
     logger.info("Best Accuracy: \t%f" % best_acc)
     logger.info("End Training!")
+
+    accs = np.array(accs)
+    params_remaining = np.array(params_remaining)
+
+    acc_file_name = os.path.join("logs", "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}acc.npy".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup, args.beta3,
+                                                                        args.local_window, args.deltaT, args.ma_uncertainty, args.ma_beta))
+    np.save(accs, acc_file_name)
+
+    params_file_name = os.path.join("logs", "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}params.npy".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup, args.beta3,
+                                                                        args.local_window, args.deltaT, args.ma_uncertainty, args.ma_beta))
+    np.save(params_remaining, params_file_name)
 
 
 def main():
