@@ -344,12 +344,12 @@ def train(args, model):
     accs = np.array(accs)
     params_remaining = np.array(params_remaining)
 
-    acc_file_name = os.path.join("logs", "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}acc.npy".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup, args.beta3,
-                                                                        args.local_window, args.deltaT, args.ma_uncertainty, args.ma_beta))
+    acc_file_name = "logs/{}_{}_{}_{}_{}_{}_{}_{}_{}_{}acc.npy".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup, args.beta3,
+                                                                        args.local_window, args.deltaT, args.ma_uncertainty, args.ma_beta)
     np.save(accs, acc_file_name)
 
-    params_file_name = os.path.join("logs", "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}params.npy".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup, args.beta3,
-                                                                        args.local_window, args.deltaT, args.ma_uncertainty, args.ma_beta))
+    params_file_name = "logs/{}_{}_{}_{}_{}_{}_{}_{}_{}_{}params.npy".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup, args.beta3,
+                                                                        args.local_window, args.deltaT, args.ma_uncertainty, args.ma_beta)
     np.save(params_remaining, params_file_name)
 
 
