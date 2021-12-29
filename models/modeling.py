@@ -375,8 +375,8 @@ class VisionTransformer(nn.Module):
                 if self.ma_uncertainty:
                     self.uncertainty[n] = MA_BETA * self.uncertainty[n] + (1 - MA_BETA) * (self.ipt[n] - self.exp_avg_ipt[n]).abs()
 
-        if self.move_prune:
-            self.ipt[n] = p * p.grad
+                if self.move_prune:
+                    self.ipt[n] = p * p.grad
 
 
 CONFIGS = {
