@@ -22,6 +22,7 @@ from models.modeling import VisionTransformer, CONFIGS
 from utils.scheduler import WarmupLinearSchedule, WarmupCosineSchedule
 from utils.data_utils import get_loader
 from utils.dist_util import get_world_size
+from Pruner import * 
 
 
 logger = logging.getLogger(__name__)
@@ -266,6 +267,9 @@ def train(args, model):
     set_seed(args)  # Added here for reproducibility (even between python 2 and 3)
     losses = AverageMeter()
     global_step, best_acc = 0, 0
+
+    SagePruner = Pruner(model, args=args, total_step=t_total, tb_writer=writer,\
+                        non_mask_name = ["embedding", "norm"], use_no_mask=True)
     while True:
         model.train()
         epoch_iterator = tqdm(train_loader,
@@ -295,8 +299,9 @@ def train(args, model):
                 scheduler.step()
                 optimizer.step()
 
-                model.module.update_exp_avg_ipt()
-
+                # model.module.update_exp_avg_ipt()
+                threshold, mask_threshold = SagePruner.update_and_pruning(model, global_step)
+                
                 optimizer.zero_grad()
                 global_step += 1
 
@@ -318,17 +323,17 @@ def train(args, model):
                 if global_step % t_total == 0:
                     break
 
-            # Prune with uncertainty
-            if global_step > args.initial_warmup and args.prune:
-                if args.move_prune:
-                    r = schedule_threshold(global_step, t_total, args)
-                    is_dict, mask_threshold = update_mask_threshold_movement(model, r, is_dict)
-                else:
-                    r = schedule_threshold(global_step, t_total, args)
-                    is_dict, mask_threshold = update_mask_threshold(model, r, args.ma_uncertainty)
+            # # Prune with uncertainty
+            # if global_step > args.initial_warmup and args.prune:
+            #     if args.move_prune:
+            #         r = schedule_threshold(global_step, t_total, args)
+            #         is_dict, mask_threshold = update_mask_threshold_movement(model, r, is_dict)
+            #     else:
+            #         r = schedule_threshold(global_step, t_total, args)
+            #         is_dict, mask_threshold = update_mask_threshold(model, r, args.ma_uncertainty)
 
-            if mask_threshold is not None:
-                mask(model, is_dict, mask_threshold)
+            # if mask_threshold is not None:
+            #     mask(model, is_dict, mask_threshold)
 
         losses.reset()
         if global_step % t_total == 0:
@@ -409,24 +414,34 @@ def main():
                         help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
-    parser.add_argument('--initial_warmup', type=int, default = 2000,
-                        help="Fine tuning before pruning")
-    parser.add_argument('--final_warmup', type=int, default = 8000,
-                        help="Fine tuning after pruning")
-    parser.add_argument('--final_threshold', type=float, default = 0.1,
-                        help="Final proportion of parameters left")
-    parser.add_argument('--prune_schedule', type=str, default = 'cubic',
-                        help="How to schedule pruning threshold")
-    parser.add_argument('--prune', default=True, action = "store_false",
-                        help="Whether to prune or not")
-    parser.add_argument('--move_prune', default=False, action="store_true",
-                        help="Whether to use movement pruning or not")
+    # Pruning Setup
     parser.add_argument('--beta3', type=float, default = 0.85,
                         help="BETA3 parameter")
-    parser.add_argument('--local_window', default=False, action="store_true",
-                        help="Whether to use local window")
     parser.add_argument('--deltaT', type=int, default = 100,
                         help="Delta T for local window")
+    parser.add_argument('--beta_meta', default=0.85, type=float)
+    # parser.add_argument('--initial_warmup', type=int, default = 2000,
+    #                     help="Fine tuning before pruning")
+    # parser.add_argument('--final_warmup', type=int, default = 8000,
+    #                     help="Fine tuning after pruning")
+    # parser.add_argument('--final_threshold', type=float, default = 0.1,
+    #                     help="Final proportion of parameters left")
+    # parser.add_argument('--prune_schedule', type=str, default = 'cubic',
+    #                     help="How to schedule pruning threshold")
+    # pruning schedule
+    parser.add_argument('--prune_schedule', default='cubic', type=str)
+    parser.add_argument('--warmup_steps', default=5400, type=int)
+    parser.add_argument('--initial_threshold', default=1., type=float)
+    parser.add_argument('--final_threshold', default=0.15, type=float)
+    parser.add_argument('--initial_warmup', default=1, type=int)
+    parser.add_argument('--final_warmup', default=2, type=int)
+
+    parser.add_argument('--move_prune', default=False, action="store_true",
+                        help="Whether to use movement pruning or not")
+    parser.add_argument('--prune', default=True, action = "store_false",
+                        help="Whether to prune or not")
+    parser.add_argument('--local_window', default=False, action="store_true",
+                        help="Whether to use local window")
     parser.add_argument('--ma_uncertainty', default=False, action="store_true",
                         help="Whether to use ma uncertainty")
     parser.add_argument('--ma_beta', type=float, default = 0.85,
