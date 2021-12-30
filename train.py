@@ -57,6 +57,15 @@ def save_model(args, model):
     logger.info("Saved model checkpoint to [DIR: %s]", args.output_dir)
 
 
+def get_run_number(name, rootdir=None):
+    os.makedirs(rootdir, exist_ok=True)
+    os_list = os.listdir(rootdir) 
+    for item in os_list:
+        if name in item:
+            return item.split('_')[0]
+    return str(len(os_list) + 1)
+
+
 def setup(args):
     # Prepare model
     config = CONFIGS[args.model_type]
@@ -373,7 +382,9 @@ def main():
                         help="Which variant to use.")
     parser.add_argument("--pretrained_dir", type=str, default="checkpoint/ViT-B_16.npz",
                         help="Where to search for pretrained ViT models.")
-    parser.add_argument("--output_dir", default="output", type=str,
+    parser.add_argument("--output_dir", default="run", type=str,
+                        help="The output directory where checkpoints will be written.")
+    parser.add_argument("--output_root_folder", default="../DataLog/vit/adp_log", type=str,
                         help="The output directory where checkpoints will be written.")
 
     parser.add_argument("--img_size", default=224, type=int,
@@ -430,11 +441,11 @@ def main():
     #                     help="How to schedule pruning threshold")
     # pruning schedule
     parser.add_argument('--prune_schedule', default='cubic', type=str)
-    parser.add_argument('--warmup_steps', default=5400, type=int)
+    parser.add_argument('--warmup_steps', default=3000, type=int)
     parser.add_argument('--initial_threshold', default=1., type=float)
     parser.add_argument('--final_threshold', default=0.15, type=float)
     parser.add_argument('--initial_warmup', default=1, type=int)
-    parser.add_argument('--final_warmup', default=2, type=int)
+    parser.add_argument('--final_warmup', default=3, type=int)
 
     parser.add_argument('--move_prune', default=False, action="store_true",
                         help="Whether to use movement pruning or not")
@@ -450,6 +461,31 @@ def main():
                         help="Which device to use (0-7)")
     args = parser.parse_args()
     print("Pruning: {}, Movement_Pruning: {}".format(args.prune, args.move_prune))
+    schedule_name = "cub-warmup{warmup_steps:d}-initwp{initial_warmup:d}-finalwp{final_warmup:d}-initTH{initial_threshold:.2f}-finalTH{final_threshold:.2f}-deltaT{deltaT:d}".format(
+        warmup_steps = args.warmup_steps, 
+        initial_warmup = args.initial_warmup, 
+        final_warmup = args.final_warmup, 
+        initial_threshold = args.initial_threshold,
+        final_threshold = args.final_threshold, 
+        deltaT = args.deltaT, 
+    )
+    output_dir = "{name}_{task}_{schedule}_beta{beta3}_betaUnc{beta_meta}_lr{lr:e}_bs{batch_size}_epoch{epoch}_seed{seed:d}_{postfix}".format(
+            name = get_alg_name(args.beta_meta),
+            task = "squad", 
+            schedule = schedule_name, 
+            lr = args.learning_rate, 
+            batch_size = args.per_gpu_eval_batch_size, 
+            epoch = int(args.num_train_epochs), 
+            postfix = args.output_dir, 
+            seed = args.seed,
+            beta3 = vars(args)['beta3'], 
+            beta_meta = args.beta_meta,
+        )
+    No = get_run_number(output_dir, args.output_root_folder)
+    output_dir = os.path.join(args.output_root_folder, No+'_'+output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    output_dir = os.path.abspath(output_dir)
+    args.output_dir = output_dir
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.device_num  # specify which GPU(s) to be used
@@ -467,9 +503,19 @@ def main():
     args.device = device
 
     # Setup logging
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
-                        datefmt='%m/%d/%Y %H:%M:%S',
-                        level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN)
+    for h in logger.handlers:
+        logger.removeHandler(h)
+    logging.basicConfig(
+        filename= os.path.join(args.output_dir, 'log.log'), filemode='w',
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        datefmt="%m/%d/%Y %H:%M:%S",
+        level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
+    )
+    logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
+    # logging.info(args.output_dir)
+    # logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+    #                     datefmt='%m/%d/%Y %H:%M:%S',
+    #                     level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN)
     logger.warning("Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s" %
                    (args.local_rank, args.device, args.n_gpu, bool(args.local_rank != -1), args.fp16))
 
