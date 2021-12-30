@@ -66,6 +66,18 @@ def get_run_number(name, rootdir=None):
     return str(len(os_list) + 1)
 
 
+def get_alg_name(beta_meta):
+    if beta_meta > 0 and beta_meta < 1:
+        name = 'adp-ema' 
+    elif beta_meta == 1:
+        name = 'adp-wounc'
+    elif beta_meta == 2:
+        name = 'adp-sqrt'
+    else:
+        name = 'adp'
+    return name
+
+
 def setup(args):
     # Prepare model
     config = CONFIGS[args.model_type]
