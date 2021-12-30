@@ -29,7 +29,7 @@ class Pruner(object):
         if not self.use_no_mask:
             return any(nd in n for nd in self.mask_param_name)
         else:
-            print("Using no mask name")
+            # print("Using no mask name")
             return not any([nd in n for nd in self.non_mask_name])
 
 
