@@ -232,9 +232,9 @@ def train(args, model):
                                 weight_decay=args.weight_decay)
     t_total = args.num_steps
     if args.decay_type == "cosine":
-        scheduler = WarmupCosineSchedule(optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
+        scheduler = WarmupCosineSchedule(optimizer, warmup_steps=args.optim_warmup_steps, t_total=t_total)
     else:
-        scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
+        scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.optim_warmup_steps, t_total=t_total)
 
     if args.fp16:
         model, optimizer = amp.initialize(models=model,
@@ -301,7 +301,7 @@ def train(args, model):
 
                 # model.module.update_exp_avg_ipt()
                 threshold, mask_threshold = SagePruner.update_and_pruning(model, global_step)
-                
+
                 optimizer.zero_grad()
                 global_step += 1
 
@@ -394,7 +394,7 @@ def main():
                         help="Total number of training epochs to perform.")
     parser.add_argument("--decay_type", choices=["cosine", "linear"], default="cosine",
                         help="How to decay the learning rate.")
-    parser.add_argument("--warmup_steps", default=500, type=int,
+    parser.add_argument("--optim_warmup_steps", default=500, type=int,
                         help="Step of training to perform learning rate warmup for.")
     parser.add_argument("--max_grad_norm", default=1.0, type=float,
                         help="Max gradient norm.")
@@ -417,9 +417,9 @@ def main():
     # Pruning Setup
     parser.add_argument('--beta3', type=float, default = 0.85,
                         help="BETA3 parameter")
-    parser.add_argument('--deltaT', type=int, default = 100,
+    parser.add_argument('--deltaT', type=int, default = 1,
                         help="Delta T for local window")
-    parser.add_argument('--beta_meta', default=0.85, type=float)
+    parser.add_argument('--beta_meta', default=0.90, type=float)
     # parser.add_argument('--initial_warmup', type=int, default = 2000,
     #                     help="Fine tuning before pruning")
     # parser.add_argument('--final_warmup', type=int, default = 8000,
