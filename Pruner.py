@@ -60,7 +60,7 @@ class Pruner(object):
     def update_ipt_with_local_window(self, model, global_step):
         for n,p in model.named_parameters():
             # if any(nd in n for nd in self.mask_param_name):
-            if self.whether_mask_para(n)
+            if self.whether_mask_para(n):
                 if n not in self.exp_avg_ipt:
                     self.exp_avg_ipt[n] = torch.zeros_like(p)
                     self.ipt[n] = torch.zeros_like(p)

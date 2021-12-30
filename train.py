@@ -469,13 +469,13 @@ def main():
         final_threshold = args.final_threshold, 
         deltaT = args.deltaT, 
     )
-    output_dir = "{name}_{task}_{schedule}_beta{beta3}_betaUnc{beta_meta}_lr{lr:e}_bs{batch_size}_epoch{epoch}_seed{seed:d}_{postfix}".format(
+    output_dir = "{name}_{task}_{schedule}_beta{beta3}_betaUnc{beta_meta}_lr{lr:e}_bs{batch_size}_totalstep{epoch}_seed{seed:d}_{postfix}".format(
             name = get_alg_name(args.beta_meta),
             task = "squad", 
             schedule = schedule_name, 
             lr = args.learning_rate, 
-            batch_size = args.per_gpu_eval_batch_size, 
-            epoch = int(args.num_train_epochs), 
+            batch_size = args.train_batch_size, 
+            epoch = int(args.num_steps), 
             postfix = args.output_dir, 
             seed = args.seed,
             beta3 = vars(args)['beta3'], 
