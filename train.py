@@ -162,6 +162,7 @@ def update_mask_threshold(model, r, ma_uncertainty=False):
                 is_dict[n] = model.module.exp_avg_ipt[n] * (model.module.ipt[n] - model.module.exp_avg_ipt[n]).abs()
 
     all_is = torch.cat([is_dict[n].view(-1) for n in is_dict])
+    print(all_is)
     mask_threshold = torch.kthvalue(all_is, int((1 - r) * all_is.shape[0]))[0].item()
     return is_dict, mask_threshold
 
