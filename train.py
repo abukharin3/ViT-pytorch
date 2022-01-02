@@ -149,7 +149,7 @@ def mask(model, is_dict, mask_threshold):
     for n, p in model.module.named_parameters():
         if not any([nd in n for nd in non_mask_name]) and p.grad is not None:
             p.data.masked_fill_(is_dict[n] < mask_threshold, 0.0)
-            masked += (is_dict[n] < mask_threshold).astype(int).sum()
+            masked += (is_dict[n] < mask_threshold).type(torch.uint8).sum()
             total_num += is_dict[n].view(-1).shape[0]
 
     masked = float(masked)
