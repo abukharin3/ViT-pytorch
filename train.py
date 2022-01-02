@@ -229,9 +229,9 @@ def train(args, model):
     """ Train the model """
     if args.local_rank in [-1, 0]:
         os.makedirs(args.output_dir, exist_ok=True)
-        writer = SummaryWriter(log_dir=os.path.join("logs", args.name))
+        writer = SummaryWriter(log_dir=os.path.join(args.output_dir, 'tensorboard'))
 
-    savefile_name = os.path.join("logs", "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.txt".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup, args.beta3,
+    savefile_name = os.path.join(args.output_dir, "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.txt".format(args.name, args.final_threshold, args.move_prune, args.initial_warmup, args.final_warmup, args.beta3,
                                                                         args.local_window, args.deltaT, args.ma_uncertainty, args.ma_beta))
 
     accs = []
