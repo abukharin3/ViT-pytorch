@@ -143,10 +143,18 @@ def mask(model, is_dict, mask_threshold):
     '''
     Create mask from is_dict (sensitivity dict) and threshold
     '''
+    masked = 0
+    total_num = 0
     non_mask_name = ["embedding", "norm"]
     for n, p in model.module.named_parameters():
         if not any([nd in n for nd in non_mask_name]) and p.grad is not None:
             p.data.masked_fill_(is_dict[n] < mask_threshold, 0.0)
+            masked += (is_dict[n] < mask_threshold).astype(int).sum()
+            total_num += is_dict[n].view(-1).shape[0]
+
+    masked = float(masked)
+    total_num = float(total_num)
+    logger.info("Number of masked parameters: {}".format(masked / total_num))
 
 def update_mask_threshold(model, r, ma_uncertainty=False):
     '''
