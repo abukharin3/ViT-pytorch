@@ -399,7 +399,7 @@ def main():
                         help="Where to search for pretrained ViT models.")
     parser.add_argument("--output_dir", default="run", type=str,
                         help="The output directory where checkpoints will be written.")
-    parser.add_argument("--output_root_folder", default="../DataLog/vit/adp_log", type=str,
+    parser.add_argument("--output_root_folder", default="/DataLog/vit/adp_log", type=str,
                         help="The output directory where checkpoints will be written.")
 
     parser.add_argument("--img_size", default=224, type=int,
