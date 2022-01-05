@@ -11,7 +11,7 @@ class Pruner(object):
     def __init__(self, model, args, total_step, tb_writer=None, \
                 mask_param_name=['attention.self', 'attention.output.dense',\
                 'output.dense', 'intermediate.dense'], non_mask_name = ["embedding", "norm"], \
-                use_no_mask=True):
+                use_no_mask=True, movement_prune=False):
         self.model = model
         self.config = vars(args)
         self.args = args
@@ -23,6 +23,7 @@ class Pruner(object):
         self.use_no_mask = use_no_mask
         self.total_step = total_step
         self.tb_writer = tb_writer
+        self.movement_prune = movement_prune
 
 
     def whether_mask_para(self, n):
@@ -66,17 +67,20 @@ class Pruner(object):
                     self.ipt[n] = torch.zeros_like(p)
                     if self.config['beta_meta']>0 and self.config['beta_meta']!=1:
                         self.exp_avg_unc[n] = torch.zeros_like(p)
-                local_step = global_step % self.config['deltaT']
-                update_step = global_step // self.config['deltaT']
-                if local_step == 0: 
-                    self.exp_avg_ipt[n] = self.config["beta3"] * self.exp_avg_ipt[n] + (1 - self.config["beta3"]) * self.ipt[n]
-                    if self.config['beta_meta'] > 0 and self.config['beta_meta'] < 1:
-                        self.exp_avg_unc[n] = self.config['beta_meta'] * self.exp_avg_unc[n] + (1 - self.config['beta_meta']) * (self.ipt[n]-self.exp_avg_ipt[n]).abs()
-                    elif self.config['beta_meta'] == 2.:
-                        self.exp_avg_unc[n] = (update_step * self.exp_avg_unc[n] + (self.ipt[n]-self.exp_avg_ipt[n])**2 )/(update_step+1)
-                    self.ipt[n] = (p * p.grad).abs().detach()
+                if self.movement_prune:
+                    self.ipt[n] -= p * p.grad
                 else:
-                    self.ipt[n] = (self.ipt[n] * local_step + (p * p.grad).abs().detach())/(local_step+1)
+                    local_step = global_step % self.config['deltaT']
+                    update_step = global_step // self.config['deltaT']
+                    if local_step == 0: 
+                        self.exp_avg_ipt[n] = self.config["beta3"] * self.exp_avg_ipt[n] + (1 - self.config["beta3"]) * self.ipt[n]
+                        if self.config['beta_meta'] > 0 and self.config['beta_meta'] < 1:
+                            self.exp_avg_unc[n] = self.config['beta_meta'] * self.exp_avg_unc[n] + (1 - self.config['beta_meta']) * (self.ipt[n]-self.exp_avg_ipt[n]).abs()
+                        elif self.config['beta_meta'] == 2.:
+                            self.exp_avg_unc[n] = (update_step * self.exp_avg_unc[n] + (self.ipt[n]-self.exp_avg_ipt[n])**2 )/(update_step+1)
+                        self.ipt[n] = (p * p.grad).abs().detach()
+                    else:
+                        self.ipt[n] = (self.ipt[n] * local_step + (p * p.grad).abs().detach())/(local_step+1)
 
 
     def mask_with_threshold(self, model, threshold):
@@ -84,7 +88,9 @@ class Pruner(object):
         for n,p in model.named_parameters():
             # if any(nd in n for nd in self.mask_param_name):
             if self.whether_mask_para(n):
-                if self.config['beta_meta'] > 0 and self.config['beta_meta']<1:
+                if self.movement_prune:
+                    is_dict[n] = self.ipt[n]
+                elif self.config['beta_meta'] > 0 and self.config['beta_meta']<1:
                     is_dict[n] = self.exp_avg_ipt[n] * self.exp_avg_unc[n] 
                 elif self.config['beta_meta'] == 1.:
                     is_dict[n] = self.exp_avg_ipt[n]

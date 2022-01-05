@@ -321,7 +321,7 @@ def train(args, model):
                 optimizer.step()
 
                 # model.module.update_exp_avg_ipt()
-                threshold, mask_threshold = SagePruner.update_and_pruning(model, global_step)
+                threshold, mask_threshold = SagePruner.update_and_pruning(model, global_step, movement_prune=args.move_prune)
 
                 optimizer.zero_grad()
                 global_step += 1
