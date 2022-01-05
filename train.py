@@ -290,7 +290,8 @@ def train(args, model):
     global_step, best_acc = 0, 0
 
     SagePruner = Pruner(model, args=args, total_step=t_total, tb_writer=writer,\
-                        non_mask_name = ["embedding", "norm"], use_no_mask=True)
+                        non_mask_name = ["embedding", "norm"], use_no_mask=True,
+                        movement_prune=args.move_prune)
     while True:
         model.train()
         epoch_iterator = tqdm(train_loader,
@@ -321,7 +322,7 @@ def train(args, model):
                 optimizer.step()
 
                 # model.module.update_exp_avg_ipt()
-                threshold, mask_threshold = SagePruner.update_and_pruning(model, global_step, movement_prune=args.move_prune)
+                threshold, mask_threshold = SagePruner.update_and_pruning(model, global_step)
 
                 optimizer.zero_grad()
                 global_step += 1
