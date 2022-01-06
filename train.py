@@ -291,7 +291,7 @@ def train(args, model):
 
     SagePruner = Pruner(model, args=args, total_step=t_total, tb_writer=writer,\
                         non_mask_name = ["embedding", "norm"], use_no_mask=True,
-                        movement_prune=args.move_prune)
+                        movement_prune=args.move_prune, pruner_name=args.pruner_name)
     while True:
         model.train()
         epoch_iterator = tqdm(train_loader,
@@ -456,6 +456,8 @@ def main():
     # parser.add_argument('--prune_schedule', type=str, default = 'cubic',
     #                     help="How to schedule pruning threshold")
     # pruning schedule
+    parser.add_argument('--pruner_name', default='SagePruner', type=str,
+                        help="[SagePruner, Movement, Magnitude]")
     parser.add_argument('--prune_schedule', default='cubic', type=str)
     parser.add_argument('--warmup_steps', default=3000, type=int)
     parser.add_argument('--initial_threshold', default=1., type=float)

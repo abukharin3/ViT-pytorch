@@ -11,7 +11,7 @@ class Pruner(object):
     def __init__(self, model, args, total_step, tb_writer=None, \
                 mask_param_name=['attention.self', 'attention.output.dense',\
                 'output.dense', 'intermediate.dense'], non_mask_name = ["embedding", "norm"], \
-                use_no_mask=True, movement_prune=False):
+                use_no_mask=True, movement_prune=False, pruner_name='SagePruner'):
         self.model = model
         self.config = vars(args)
         self.args = args
@@ -24,6 +24,7 @@ class Pruner(object):
         self.total_step = total_step
         self.tb_writer = tb_writer
         self.movement_prune = movement_prune
+        self.pruner_name = pruner_name
 
 
     def whether_mask_para(self, n):
@@ -67,9 +68,11 @@ class Pruner(object):
                     self.ipt[n] = torch.zeros_like(p)
                     if self.config['beta_meta']>0 and self.config['beta_meta']!=1:
                         self.exp_avg_unc[n] = torch.zeros_like(p)
-                if self.movement_prune:
-                    self.ipt[n] -= p * p.grad
-                else:
+                if self.pruner_name == 'Movement' or self.movement_prune:
+                    self.ipt[n] -= (p * p.grad).detach()
+                elif self.pruner_name == 'Magnitude':
+                    self.ipt[n] = p.abs().detach()
+                elif self.pruner_name == 'SagePruner':
                     local_step = global_step % self.config['deltaT']
                     update_step = global_step // self.config['deltaT']
                     if local_step == 0: 
@@ -81,6 +84,8 @@ class Pruner(object):
                         self.ipt[n] = (p * p.grad).abs().detach()
                     else:
                         self.ipt[n] = (self.ipt[n] * local_step + (p * p.grad).abs().detach())/(local_step+1)
+                else:
+                    raise ValueError("Incorrect Pruner Name.")
 
 
     def mask_with_threshold(self, model, threshold):
@@ -88,16 +93,19 @@ class Pruner(object):
         for n,p in model.named_parameters():
             # if any(nd in n for nd in self.mask_param_name):
             if self.whether_mask_para(n):
-                if self.movement_prune:
+                if self.pruner_name in ['Movement', 'Magnitude'] or self.movement_prune:
                     is_dict[n] = self.ipt[n]
-                elif self.config['beta_meta'] > 0 and self.config['beta_meta']<1:
-                    is_dict[n] = self.exp_avg_ipt[n] * self.exp_avg_unc[n] 
-                elif self.config['beta_meta'] == 1.:
-                    is_dict[n] = self.exp_avg_ipt[n]
-                elif self.config['beta_meta'] == 2.:
-                    is_dict[n] = self.exp_avg_ipt[n] * self.exp_avg_unc.sqrt()
+                elif self.pruner_name == 'SagePruner':
+                    if self.config['beta_meta'] > 0 and self.config['beta_meta']<1:
+                        is_dict[n] = self.exp_avg_ipt[n] * self.exp_avg_unc[n] 
+                    elif self.config['beta_meta'] == 1.:
+                        is_dict[n] = self.exp_avg_ipt[n]
+                    elif self.config['beta_meta'] == 2.:
+                        is_dict[n] = self.exp_avg_ipt[n] * self.exp_avg_unc.sqrt()
+                    else:
+                        is_dict[n] = self.exp_avg_ipt[n] * (self.ipt[n] - self.exp_avg_ipt[n]).abs()
                 else:
-                    is_dict[n] = self.exp_avg_ipt[n] * (self.ipt[n] - self.exp_avg_ipt[n]).abs()
+                    raise ValueError("Incorrect Pruner Name.")
         all_is = torch.cat([is_dict[n].view(-1) for n in is_dict])
         mask_threshold = torch.kthvalue(all_is, int(all_is.shape[0]*(1 - threshold)))[0].item()
         # return is_dict, mask_threshold
