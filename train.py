@@ -66,7 +66,7 @@ def get_run_number(name, rootdir=None):
     return str(len(os_list) + 1)
 
 
-def get_alg_name(beta_meta):
+def get_alg_name(beta_meta, pruner_name='SagePruner'):
     if beta_meta > 0 and beta_meta < 1:
         name = 'adp-ema' 
     elif beta_meta == 1:
@@ -75,6 +75,9 @@ def get_alg_name(beta_meta):
         name = 'adp-sqrt'
     else:
         name = 'adp'
+    if pruner_name != 'SagePruner':
+        name_dict = {"Movement":"mp", "Magnitude":"mg"}
+        name = name_dict[pruner_name]
     return name
 
 
@@ -488,7 +491,7 @@ def main():
         deltaT = args.deltaT, 
     )
     output_dir = "{name}_{task}_{schedule}_beta{beta3}_betaUnc{beta_meta}_lr{lr:e}_bs{batch_size}_totalstep{epoch}_seed{seed:d}_{postfix}".format(
-            name = get_alg_name(args.beta_meta),
+            name = get_alg_name(args.beta_meta, args.pruner_name),
             task = "squad", 
             schedule = schedule_name, 
             lr = args.learning_rate, 
