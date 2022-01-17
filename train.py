@@ -306,7 +306,6 @@ def train(args, model):
             batch = tuple(t.to(args.device) for t in batch)
             x, y = batch
             loss = model(x, y).sum()
-            print(loss)
 
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
