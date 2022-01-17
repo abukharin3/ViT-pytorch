@@ -285,7 +285,6 @@ class VisionTransformer(nn.Module):
     def forward(self, x, labels=None):
         x, attn_weights = self.transformer(x)
         logits = self.head(x[:, 0])
-        print(logits)
         if labels is not None:
             loss_fct = CrossEntropyLoss()
             loss = loss_fct(logits.view(-1, self.num_classes), labels.view(-1))
