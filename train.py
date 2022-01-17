@@ -305,6 +305,7 @@ def train(args, model):
         for step, batch in enumerate(epoch_iterator):
             batch = tuple(t.to(args.device) for t in batch)
             x, y = batch
+            print(x.shape, y.shape, y)
             loss = model(x, y).sum()
 
             if args.gradient_accumulation_steps > 1:
