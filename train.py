@@ -304,8 +304,8 @@ def train(args, model):
                               disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
             batch = tuple(t.to(args.device) for t in batch)
-            x, y = batch
-            print(x.shape, y.shape)
+            x, y = batch # torch.Size([512, 3, 224, 224]) torch.Size([512])
+            print(x.shape, y.shape, x.type, y.type) 
             loss = model(x, y).sum()
 
             if args.gradient_accumulation_steps > 1:
