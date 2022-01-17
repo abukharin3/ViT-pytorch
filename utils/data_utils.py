@@ -37,8 +37,6 @@ def get_loader(args):
         trainset = datasets.ImageFolder(root="../../../../../mnt/data/vit_pruning/data/ImageNet/train/",
                                     transform=transform_train)
         testset = datasets.ImageFolder(root="../../../../../mnt/data/vit_pruning/data/ImageNet/val/",
-                                   split="val",
-                                   download=False,
                                    transform=transform_test) if args.local_rank in [-1, 0] else None
 
     else:
