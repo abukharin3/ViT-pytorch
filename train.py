@@ -87,6 +87,9 @@ def setup(args):
 
     num_classes = 10 if args.dataset == "cifar10" else 100
 
+    if args.dataset == "ImageNet":
+        num_classes = 1000
+
     model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes, move_prune=args.move_prune, beta3=args.beta3,
                               local_window=args.local_window, deltaT=args.deltaT, ma_uncertainty=args.ma_uncertainty, ma_beta=args.ma_beta)
     model.load_from(np.load(args.pretrained_dir))
@@ -304,7 +307,7 @@ def train(args, model):
                               disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
             batch = tuple(t.to(args.device) for t in batch)
-            x, y = batch # torch.Size([512, 3, 224, 224]) torch.Size([512])
+            x, y = batch # torch.Size([512, 3, 224, 224]) torch.Size([512]), float32, int64
             print(x.shape, y.shape, x.dtype, y.dtype) 
             loss = model(x, y).sum()
 
