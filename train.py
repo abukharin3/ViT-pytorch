@@ -342,6 +342,8 @@ def train(args, model):
                     writer.add_scalar("pruning/prune_target", scalar_value=threshold, global_step=global_step)
                     if mask_threshold is not None:
                         writer.add_scalar("pruning/mask_threshold", scalar_value=mask_threshold, global_step=global_step)
+                if global_step >= 25000:
+                    args.eval_every = 500
                 if global_step % args.eval_every == 0 and args.local_rank in [-1, 0]:
                     accuracy = valid(args, model, writer, test_loader, global_step)
                     accs.append(accuracy)
